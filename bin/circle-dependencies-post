@@ -37,4 +37,6 @@ if [ -n "$TEST_AND_PUBLISH" ] ; then
     ../tools/rebuild-image weaveworks/weavebuild . Dockerfile build.sh
     touch $SRCDIR/.build.uptodate
     sudo chown -R ubuntu /usr/local/go
+    cd $SRCDIR
+    make COVERAGE=true RM= exes all
 fi
