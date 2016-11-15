@@ -63,8 +63,20 @@ func (driver *driver) GetCapabilities() (*api.GetCapabilityResponse, error) {
 
 func (driver *driver) CreateNetwork(create *api.CreateNetworkRequest) error {
 	driver.logReq("CreateNetwork", create, create.NetworkID)
+	fmt.Println("cn>", create.Options, create.IPv4Data)
 	_, err := driver.setupNetworkInfo(create.NetworkID, true, stringOptions(create))
 	return err
+}
+
+func (driver *driver) NetworkAllocate(alloc *api.AllocateNetworkRequest) (*api.AllocateNetworkResponse, error) {
+	driver.logReq("NetworkAllocate", alloc, alloc.NetworkID)
+	fmt.Println("na>", alloc.Options, alloc.IPv4Data)
+	return nil, nil
+}
+
+func (driver *driver) NetworkFree(free *api.FreeNetworkRequest) (*api.FreeNetworkResponse, error) {
+	driver.logReq("NetworkFree", free, free.NetworkID)
+	return nil, nil
 }
 
 // Deal with excessively-generic way the options get decoded from JSON
