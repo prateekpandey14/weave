@@ -606,8 +606,8 @@ func (fwd *sleeveForwarder) ControlMessage(tag byte, msg []byte) {
 	}
 }
 
-func (fwd *sleeveForwarder) DisplayName() string {
-	return "sleeve"
+func (fwd *sleeveForwarder) GetDisplayNameAndAttrs() (string, map[string]interface{}) {
+	return "sleeve", map[string]interface{}{"mtu": fwd.mtu}
 }
 
 func (fwd *sleeveForwarder) Stop() {

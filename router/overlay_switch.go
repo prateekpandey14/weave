@@ -424,7 +424,7 @@ func (fwd *overlaySwitchForwarder) ControlMessage(tag byte, msg []byte) {
 	}
 }
 
-func (fwd *overlaySwitchForwarder) DisplayName() string {
+func (fwd *overlaySwitchForwarder) GetDisplayNameAndAttrs() (string, map[string]interface{}) {
 	var best OverlayForwarder
 
 	fwd.lock.Lock()
@@ -434,8 +434,8 @@ func (fwd *overlaySwitchForwarder) DisplayName() string {
 	fwd.lock.Unlock()
 
 	if best != nil {
-		return best.DisplayName()
+		return best.GetDisplayNameAndAttrs()
 	}
 
-	return "none"
+	return "none", nil
 }

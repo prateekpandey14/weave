@@ -771,8 +771,8 @@ func (fwd *fastDatapathForwarder) ControlMessage(tag byte, msg []byte) {
 	}
 }
 
-func (fwd *fastDatapathForwarder) DisplayName() string {
-	return "fastdp"
+func (fwd *fastDatapathForwarder) GetDisplayNameAndAttrs() (string, map[string]interface{}) {
+	return "fastdp", map[string]interface{}{"mtu": fwd.fastdp.iface.MTU}
 }
 
 func (fwd *fastDatapathForwarder) handleHeartbeatAck() {
