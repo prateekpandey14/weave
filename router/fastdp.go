@@ -50,7 +50,8 @@ type FastDatapath struct {
 	seenMACs map[MAC]struct{}
 
 	// vxlan vports associated with the given UDP ports
-	vxlanVportIDs    map[int]odp.VportID
+	vxlanUDPPorts    map[int]odp.VportID
+	vxlanVportIDs    map[odp.VportID]struct{}
 	mainVxlanVportID odp.VportID
 
 	// A singleton pool for the occasions when we need to decode
@@ -87,7 +88,8 @@ func NewFastDatapath(iface *net.Interface, port int) (*FastDatapath, error) {
 		sendToPort:    nil,
 		sendToMAC:     make(map[MAC]bridgeSender),
 		seenMACs:      make(map[MAC]struct{}),
-		vxlanVportIDs: make(map[int]odp.VportID),
+		vxlanUDPPorts: make(map[int]odp.VportID),
+		vxlanVportIDs: make(map[odp.VportID]struct{}),
 		forwarders:    make(map[mesh.PeerName]*fastDatapathForwarder),
 	}
 
@@ -433,7 +435,7 @@ func (fastdp *FastDatapath) getVxlanVportID(udpPort int) (odp.VportID, error) {
 	fastdp.lock.Lock()
 	defer fastdp.lock.Unlock()
 
-	if vxlanVportID, present := fastdp.vxlanVportIDs[udpPort]; present {
+	if vxlanVportID, present := fastdp.vxlanUDPPorts[udpPort]; present {
 		return vxlanVportID, nil
 	}
 
@@ -459,7 +461,8 @@ func (fastdp *FastDatapath) getVxlanVportID(udpPort int) (odp.VportID, error) {
 		}
 	}
 
-	fastdp.vxlanVportIDs[udpPort] = vxlanVportID
+	fastdp.vxlanUDPPorts[udpPort] = vxlanVportID
+	fastdp.vxlanVportIDs[vxlanVportID] = struct{}{}
 	fastdp.missHandlers[vxlanVportID] = func(fks odp.FlowKeys, lock *fastDatapathLock) FlowOp {
 		log.Debug("ODP miss: ", fks, " on port ", vxlanVportID)
 		tunnel := fks[odp.OVS_KEY_ATTR_TUNNEL].(odp.TunnelFlowKey)
@@ -1134,6 +1137,11 @@ func (fastdp *FastDatapath) send(fops FlowOp, frame []byte, lock *fastDatapathLo
 		}
 	}
 
+	if !fastdp.checkFlowLoop(&flow) {
+		log.Error("ODP flow contains a loop ", flow)
+		return
+	}
+
 	if dec != nil {
 		// put the decoder back
 		lock.relock()
@@ -1169,6 +1177,45 @@ func (fastdp *FastDatapath) takeDecoder(lock *fastDatapathLock) *EthernetDecoder
 		fastdp.dec = nil
 	}
 	return dec
+}
+
+// A checkFlowLoop checks whether the flow is free from the following loops:
+// * in_port == out_port, where in_port is non-vxlan vport;
+// * a packet is sent back to a vxlan tunnel it has been received from.
+func (fastdp *FastDatapath) checkFlowLoop(flow *odp.FlowSpec) bool {
+	var vxlanKey odp.TunnelAttrs
+
+	inVports := make(map[odp.VportID]struct{})
+	inVxlan := false
+
+	for _, key := range flow.FlowKeys {
+		switch k := key.(type) {
+		case odp.InPortFlowKey:
+			inVports[k.VportID()] = struct{}{}
+		case odp.TunnelFlowKey:
+			inVxlan = true
+			vxlanKey = k.Key()
+		}
+	}
+
+	for _, action := range flow.Actions {
+		switch a := action.(type) {
+		case odp.OutputAction:
+			if _, ok := inVports[a.VportID()]; ok {
+				if _, ok := fastdp.vxlanVportIDs[a.VportID()]; !ok {
+					return false
+				}
+			}
+		case odp.SetTunnelAction:
+			if inVxlan && a.TunnelAttrs.TunnelId == vxlanKey.TunnelId &&
+				a.TunnelAttrs.Ipv4Src == vxlanKey.Ipv4Dst &&
+				a.TunnelAttrs.Ipv4Dst == vxlanKey.Ipv4Src {
+				return false
+			}
+		}
+	}
+
+	return true
 }
 
 type odpActionsFlowOp struct {
