@@ -1,9 +1,6 @@
 [submodule "tools"]
 	path = tools
 	url = https://github.com/weaveworks/build-tools
-[submodule "vendor/github.com/vishvananda/netlink"]
-	path = vendor/github.com/vishvananda/netlink
-	url = https://github.com/vishvananda/netlink.git
 [submodule "vendor/github.com/gorilla/mux"]
 	path = vendor/github.com/gorilla/mux
 	url = https://github.com/gorilla/mux.git
@@ -118,3 +115,6 @@
 [submodule "vendor/github.com/spf13/pflag"]
 	path = vendor/github.com/spf13/pflag
 	url = https://github.com/spf13/pflag
+[submodule "vendor/github.com/vishvananda/netlink"]
+	path = vendor/github.com/vishvananda/netlink
+	url = https://github.com/brb/netlink
